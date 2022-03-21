@@ -1,0 +1,85 @@
+#! /bin/bash
+
+if [[ $1 = "gui" ]]; then
+    MENU=$(
+        zenity --list \
+        --title="Automatic Maintainance (Updates / Cleaning)" \
+        --text="This program is a quick and easy way to automatically update your system." \
+        --column="Option" --column="Description" \
+        --width="570" \
+        --height="220" \
+        "Run" "Runs the updates and cleanup once" \
+        "Enable" "Enables Auto-Maintainance to keep your system up to date automatically" \
+        "Disable" "Disables Auto-Maintainance for manual updates" \
+        "Exit" "Goodbye!"
+    )
+
+    if [[ "$MENU" = "Run" ]] ;then
+        xterm -e $0
+    elif [[ "$MENU" = "Enable" ]] ;then
+        xterm -e $0 enable
+    elif [[ "$MENU" = "Disable" ]] ;then
+        xterm -e $0 disable
+    fi
+    exit 0
+fi
+
+# Ensure we're running as root
+if [[ "$(id -u)" != 0 ]]; then
+    sudo $0 $@
+    exit 1
+fi
+
+if [[ $1 = "enable" ]]; then
+if [[ ! -f /usr/bin/auto-maintainance ]]; then
+    echo auto-maintainance is not installed in the system, copying self to /usr/bin
+    cp $0 /usr/bin/auto-maintainance
+fi
+echo '[Unit]
+Description=Automatic Maintainance
+
+[Service]
+User=root
+Restart=always
+RestartSec=1800s
+ExecStart=/usr/bin/auto-maintainance
+
+[Install]
+WantedBy=multi-user.target' > /etc/systemd/system/auto-maintainance.service
+systemctl enable auto-maintainance
+echo Automatic Auto Maintainance will be enabled upon reboot.
+echo Use systemctl start auto-maintainance to start the service immediately.
+read -p "Press a key to continue"
+exit 0
+fi
+
+if [[ $1 = "disable" ]]; then
+systemctl stop auto-maintainance
+systemctl disable auto-maintainance
+rm /etc/systemd/system/auto-maintainance.service
+echo Automatic Auto Maintainance is now disabled.
+read -p "Press a key to continue"
+exit 0
+fi
+
+# Update system packages and remove unused dependencies
+pacman -Syyu --noconfirm
+pamac remove -o --no-confirm
+pamac clean --no-confirm
+
+#Automatically install latest kernels and headers
+pamac install linux-lts linux-lts-headers linux-latest linux-latest-headers --no-confirm
+
+# Installing missing modules for all kernels if missing modules are detected
+pamac install $(pacman -Qsq "^linux" | grep "^linux[0-9]*[-rt]*$") --no-confirm
+
+# Ensuring all kernels contain header files (In case you have extra kernels on your system)
+#pamac install $(pacman -Qsq "^linux" | grep "^linux[0-9]*[-rt]*$" | awk '{print $1"-headers"}' ORS=' ') --no-confirm
+
+#Update flatpak's and remove unused dependencies
+flatpak update -y
+flatpak uninstall --unused -y
+
+#Update and remove unused Snap's
+snap refresh
+snap list --all | while read snapname ver rev trk pub notes; do if [[ $notes = *disabled* ]]; then snap remove "$snapname" --revision="$rev"; fi; done
