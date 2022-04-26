@@ -1,6 +1,11 @@
-# Automatic Maintainance
+# Tux Updater
 
-Automatic updater script i used in the Henkjaro concept ISO, and i also use for my daily drivers and servers.
+A small utility to update a variety of package type on Arch/Debian based distributions. 
+
+A lot of the work goes to @Henky!!, you can find the original script here https://gitlab.com/henk717/manjaro-automatic-update, since it seems not to be updated, I will continue to tweak and update it as munch as I can.
+
+---
+
 Copy this to /usr/bin to install the script on your system (And optionally place the .desktop icon for the startmenu)
 
 The usage is simple, and the script is easy to customize with your own update routine (for example to adapt it to other distro's).
